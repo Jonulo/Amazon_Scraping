@@ -8,6 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 import time
+import os
 
 headers = {
   "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.192 Safari/537.36 OPR/74.0.3911.218'
@@ -18,14 +19,14 @@ def send_whatsapp_msg(product_info):
   whatsapp_url = 'https://web.whatsapp.com/'
   options = webdriver.ChromeOptions()
   options.add_argument('--ignore-certificate-errors')
-  options.add_argument('--headless')
-  options.add_argument("user-data-dir=C:/Users/Georg/AppData/Local/Google/Chrome/User Data/Profile 1")
+  # options.add_argument('--headless')
+  options.add_argument("user-data-dir=C:/Users/Georg/AppData/Local/Google/Chrome/User Data/Profile 2")
   driver_msg = webdriver.Chrome("/mnt/c/Users/Georg/Desktop/chromedriver.exe", options=options)
 
   driver_msg.get(whatsapp_url)
   wait = WebDriverWait(driver_msg, 60)
 
-  target = '"Promos"'
+  target = '"+52 1 222 260 3627"'
   string = '---------- Nueva Oferta Razer! ---------- \n' + product_info['name'] + ' ('+product_info['id']+')\n' 'Bajo a: $' + str(product_info['lower_price']) + ' de: ' + product_info['price'] +'\n link: \n' + product_info['link']
  
   x_arg = '//span[contains(@title,' + target + ')]'
@@ -39,6 +40,7 @@ def send_whatsapp_msg(product_info):
   input_box.send_keys(string + Keys.ENTER)
   time.sleep(1)
   driver_msg.close() 
+  driver_msg.quit()
 
 def create_local_dataBase(products_dataBase):
   with open('razer_products.json', 'w') as f:
@@ -54,13 +56,16 @@ def check_razer_prices():
   driver = webdriver.Chrome("/mnt/c/Users/Georg/Desktop/chromedriver.exe", options=options)
 
   driver.get(URL)
-  # WebDriverWait(driver, 60)
+  wait_self = WebDriverWait(driver, 60)
   page_source = driver.page_source
 
   soup = BeautifulSoup(page_source, 'html.parser')
 
-  pagination_labels = soup.find_all(re.compile("^li"), class_="a-normal")
-  ref_link_pagination = "https://www.amazon.com.mx"+pagination_labels[0].a['href']
+  xp_arg = '//li[@class="a-normal"]/a'
+  pagination_labels = wait_self.until(EC.presence_of_element_located((By.XPATH, xp_arg)))
+  # pagination_labels = soup.find_all(re.compile("^li"), class_="a-normal")
+  print(pagination_labels)
+  ref_link_pagination = pagination_labels.get_attribute('href')
 
   split_link = ref_link_pagination.split("&")
   format_link = split_link[0]+"&"+split_link[1]+"&"+split_link[2]+"&"+split_link[3]+"&"+split_link[4]
@@ -108,24 +113,23 @@ def check_razer_prices():
               if 'lower_price' in local_product:
                 if local_product['lower_price'] > new_product_price_for_compare:
                   local_product['lower_price'] = new_product_price_for_compare
-                  print("el producto: ", local_product['name'], "bajo del lower_precio: $", local_product['lower_price'], "a: $", new_product_price_for_compare)
+                  print("-------------- \n el producto: ", local_product['name'], "bajo del lower_precio: $", local_product['lower_price'], "a: $", new_product_price_for_compare)
                   send_whatsapp_msg(local_product)
               else:
                 local_product['lower_price'] = new_product_price_for_compare
                 send_whatsapp_msg(local_product)
-                print("el producto: ", local_product['name'], "bajo del precio: $", local_product_price_for_compare, "a: $", new_product_price_for_compare)
-
+                print("---------------- \n el producto: ", local_product['name'], "bajo del precio: $", local_product_price_for_compare, "a: $", new_product_price_for_compare)
           else:
-            razer_product['page_num'] = x
+            new_product_in_db['page_num'] = x
             new_product_in_db['id'] = new_product_id
             new_product_in_db['name'] = new_product_name
             new_product_in_db['link'] = "https://www.amazon.com.mx"+new_product_link
             new_product_in_db['price'] = new_product_price.string
             products_from_db[new_product_id] = new_product_in_db
-            print("new product added: ", new_product_name)
+            print("--------------- \n new product added: ", new_product_name)
       driver_page.close()
-    time.sleep(1)
-    driver_page.quit()
+      time.sleep(1)
+      driver_page.quit()
 
     create_local_dataBase(products_from_db)
     print("---------------")
@@ -181,8 +185,6 @@ def check_razer_prices():
       print("Local dataBase created!")
   driver.quit()
 
-# while(True):
-#   check_razer_prices()
-#   time.sleep(1800)
-
-check_razer_prices()
+while(True):
+  check_razer_prices()
+  time.sleep(600)#1800
